@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="https://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head>
+	<div th:replace="~{fragment :: meta}"></div>
+
+	<div th:replace="~{fragment :: styles}"></div>
+
+	<title>投稿編集</title>
+</head>
+
+<body>
+	<div class="wrapper">
+		<div th:replace="~{fragment :: header}"></div>
+
+		<main>
+			<div class="container">
+				<h1 class="fs-3 my-4 text-center">投稿編集</h1>
+				<form th:action="@{/boards/__${boardId}__/posts/__${postId}__/update}" method="post" th:object="${postEditForm}">
+					<div class="form-group mb-3">
+						<label for="content">本文</label>
+						<div th:if="${#fields.hasErrors('content')}" class="text-danger small mb-2" th:errors="*{content}"></div>
+						<textarea class="form-control" th:field="*{content}"></textarea>
+					</div>
+					<div class="d-flex justify-content-start position-relative">
+						<a th:href="@{/boards/__${boardId}__/posts}" class="btn btn-outline-dark me-2 z-1">戻る</a>
+						<button type="submit" class="btn btn-dark">更新</button>
+					</div>
+				</form>
+			</div>
+		</main>
+
+		<div th:replace="~{fragment :: footer}"></div>
+	</div>
+
+	<div th:replace="~{fragment :: scripts}"></div>
+</body>
+
+</html>
