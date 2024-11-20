@@ -23,6 +23,9 @@ import com.example.hurang_board.service.PostService;
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 public class PostControllerTest {
+	// ベースURL
+	private static final String BASE_URL = "/boards/{boardId}/posts";
+
 	@Autowired
 	private MockMvc mockMvc;
 
@@ -30,156 +33,141 @@ public class PostControllerTest {
 	private PostService postService;
 
 	@Test
-	@WithUserDetails("taro.samurai@example.com")
-	public void ログイン済みの場合は投稿一覧ページが正しく表示される() throws Exception {
-		mockMvc.perform(get("/posts"))
+	public void 未ログインの場合は投稿一覧画面が正しく表示される() throws Exception {
+		mockMvc.perform(get(BASE_URL, 1))
 				.andExpect(status().isOk())
 				.andExpect(view().name("posts/index"));
 	}
 
 	@Test
-	public void 未ログインの場合は投稿一覧ページからログインページにリダイレクトする() throws Exception {
-		mockMvc.perform(get("/posts"))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("http://localhost/login"));
-	}
-
-	@Test
-	@WithUserDetails("taro.samurai@example.com")
-	public void ログイン済みの場合は投稿詳細ページが正しく表示される() throws Exception {
-		mockMvc.perform(get("/posts/1"))
+	@WithUserDetails("suzuki.ichiro@example.com")
+	public void ログイン済みの場合は投稿一覧画面が正しく表示される() throws Exception {
+		mockMvc.perform(get(BASE_URL, 1))
 				.andExpect(status().isOk())
-				.andExpect(view().name("posts/show"));
+				.andExpect(view().name("posts/index"));
 	}
 
 	@Test
-	public void 未ログインの場合は投稿詳細ページからログインページにリダイレクトする() throws Exception {
-		mockMvc.perform(get("/posts/1"))
+	public void 未ログインの場合は投稿登録画面からログイン画面にリダイレクトする() throws Exception {
+		mockMvc.perform(get(BASE_URL + "/register", 1))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("http://localhost/login"));
 	}
 
 	@Test
-	@WithUserDetails("taro.samurai@example.com")
-	public void ログイン済みの場合は投稿作成ページが正しく表示される() throws Exception {
-		mockMvc.perform(get("/posts/register"))
+	@WithUserDetails("suzuki.ichiro@example.com")
+	public void ログイン済みの場合は投稿登録画面が正しく表示される() throws Exception {
+		mockMvc.perform(get(BASE_URL + "/register", 1))
 				.andExpect(status().isOk())
 				.andExpect(view().name("posts/register"));
 	}
 
 	@Test
-	public void 未ログインの場合は投稿作成ページからログインページにリダイレクトする() throws Exception {
-		mockMvc.perform(get("/posts/register"))
+	@Transactional
+	public void 未ログインの場合は投稿を登録せずにログイン画面にリダイレクトする() throws Exception {
+		mockMvc.perform(post(BASE_URL + "/create", 1).with(csrf()).param("content", "投稿登録テスト"))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl("http://localhost/login"));
+
+		Post post = postService.findFirstPostByOrderByIdDesc();
+		assertThat(post.getContent()).isNotEqualTo("投稿登録テスト");
+	}
+
+	@Test
+	@WithUserDetails("suzuki.ichiro@example.com")
+	@Transactional
+	public void ログイン済みの場合は投稿登録後に投稿一覧画面にリダイレクトする() throws Exception {
+		mockMvc.perform(post(BASE_URL + "/create", 1).with(csrf()).param("content", "投稿登録テスト"))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(redirectedUrl(BASE_URL.replace("{boardId}", "1")));
+
+		Post post = postService.findFirstPostByOrderByIdDesc();
+		assertThat(post.getContent()).isEqualTo("投稿登録テスト");
+	}
+
+	@Test
+	public void 未ログインの場合は投稿編集画面からログイン画面にリダイレクトする() throws Exception {
+		mockMvc.perform(get(BASE_URL + "/1/edit", 1))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("http://localhost/login"));
 	}
 
 	@Test
-	@WithUserDetails("taro.samurai@example.com")
-	@Transactional
-	public void ログイン済みの場合は投稿作成後に投稿一覧ページにリダイレクトする() throws Exception {
-		mockMvc.perform(post("/posts/create").with(csrf()).param("title", "テストタイトル").param("content", "テスト内容"))
+	@WithUserDetails("tanaka.taro@example.com")
+	public void ログイン済みの場合は他人の投稿編集画面から投稿一覧画面にリダイレクトする() throws Exception {
+		mockMvc.perform(get(BASE_URL + "/1/edit", 1))
 				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/posts"));
-
-		Post post = postService.findFirstPostByOrderByIdDesc();
-		assertThat(post.getContent()).isEqualTo("テスト内容");
+				.andExpect(redirectedUrl(BASE_URL.replace("{boardId}", "1")));
 	}
 
 	@Test
-	@Transactional
-	public void 未ログインの場合は投稿を作成せずにログインページにリダイレクトする() throws Exception {
-		mockMvc.perform(post("/posts/create").with(csrf()).param("title", "テストタイトル").param("content", "テスト内容"))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("http://localhost/login"));
-
-		Post post = postService.findFirstPostByOrderByIdDesc();
-		assertThat(post.getContent()).isNotEqualTo("テスト内容");
-	}
-
-	@Test
-	@WithUserDetails("taro.samurai@example.com")
-	public void ログイン済みの場合は自身の投稿編集ページが正しく表示される() throws Exception {
-		mockMvc.perform(get("/posts/1/edit"))
+	@WithUserDetails("suzuki.ichiro@example.com")
+	public void ログイン済みの場合は自身の投稿編集画面が正しく表示される() throws Exception {
+		mockMvc.perform(get(BASE_URL + "/1/edit", 1))
 				.andExpect(status().isOk())
 				.andExpect(view().name("posts/edit"));
 	}
 
 	@Test
-	@WithUserDetails("jiro.samurai@example.com")
-	public void ログイン済みの場合は他人の投稿編集ページから投稿一覧ページにリダイレクトする() throws Exception {
-		mockMvc.perform(get("/posts/1/edit"))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/posts"));
-	}
-
-	@Test
-	public void 未ログインの場合は投稿編集ページからログインページにリダイレクトする() throws Exception {
-		mockMvc.perform(get("/posts/1/edit"))
-				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("http://localhost/login"));
-	}
-
-	@Test
-	@WithUserDetails("taro.samurai@example.com")
+	@WithUserDetails("suzuki.ichiro@example.com")
 	@Transactional
-	public void ログイン済みの場合は自身の投稿更新後に投稿詳細ページにリダイレクトする() throws Exception {
-		mockMvc.perform(post("/posts/1/update").with(csrf()).param("title", "テストタイトル").param("content", "テスト内容"))
+	public void ログイン済みの場合は自身の投稿更新後に投稿詳細画面にリダイレクトする() throws Exception {
+		mockMvc.perform(post(BASE_URL + "/1/update", 1).with(csrf()).param("content", "投稿編集テスト"))
 				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/posts/1"));
+				.andExpect(redirectedUrl(BASE_URL.replace("{boardId}", "1")));
 
 		Optional<Post> optionalPost = postService.findPostById(1);
 		assertThat(optionalPost).isPresent();
 		Post post = optionalPost.get();
-		assertThat(post.getContent()).isEqualTo("テスト内容");
+		assertThat(post.getContent()).isEqualTo("投稿編集テスト");
 	}
 
 	@Test
-	@WithUserDetails("jiro.samurai@example.com")
+	@WithUserDetails("tanaka.taro@example.com")
 	@Transactional
-	public void ログイン済みの場合は他人の投稿を更新せずに投稿一覧ページにリダイレクトする() throws Exception {
-		mockMvc.perform(post("/posts/1/update").with(csrf()).param("title", "テストタイトル").param("content", "テスト内容"))
+	public void ログイン済みの場合は他人の投稿を更新せずに投稿一覧画面にリダイレクトする() throws Exception {
+		mockMvc.perform(post(BASE_URL + "/1/update", 1).with(csrf()).param("content", "投稿編集テスト"))
 				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/posts"));
+				.andExpect(redirectedUrl(BASE_URL.replace("{boardId}", "1")));
 
 		Optional<Post> optionalPost = postService.findPostById(1);
 		assertThat(optionalPost).isPresent();
 		Post post = optionalPost.get();
-		assertThat(post.getContent()).isNotEqualTo("テスト内容");
+		assertThat(post.getContent()).isNotEqualTo("投稿編集テスト");
 	}
 
 	@Test
 	@Transactional
-	public void 未ログインの場合は投稿を更新せずにログインページにリダイレクトする() throws Exception {
-		mockMvc.perform(post("/posts/1/update").with(csrf()).param("title", "テストタイトル").param("content", "テスト内容"))
+	public void 未ログインの場合は投稿を更新せずにログイン画面にリダイレクトする() throws Exception {
+		mockMvc.perform(post(BASE_URL + "/1/update", 1).with(csrf()).param("content", "投稿編集テスト"))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("http://localhost/login"));
 
 		Optional<Post> optionalPost = postService.findPostById(1);
 		assertThat(optionalPost).isPresent();
 		Post post = optionalPost.get();
-		assertThat(post.getContent()).isNotEqualTo("テスト内容");
+		assertThat(post.getContent()).isNotEqualTo("投稿編集テスト");
 	}
 
 	@Test
-	@WithUserDetails("taro.samurai@example.com")
+	@WithUserDetails("suzuki.ichiro@example.com")
 	@Transactional
-	public void ログイン済みの場合は自身の投稿削除後に投稿一覧ページにリダイレクトする() throws Exception {
-		mockMvc.perform(post("/posts/1/delete").with(csrf()))
+	public void ログイン済みの場合は自身の投稿削除後に投稿一覧画面にリダイレクトする() throws Exception {
+		mockMvc.perform(post(BASE_URL + "/1/delete", 1).with(csrf()))
 				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/posts"));
+				.andExpect(redirectedUrl(BASE_URL.replace("{boardId}", "1")));
 
 		Optional<Post> optionalPost = postService.findPostById(1);
 		assertThat(optionalPost).isEmpty();
 	}
 
 	@Test
-	@WithUserDetails("jiro.samurai@example.com")
+	@WithUserDetails("tanaka.taro@example.com")
 	@Transactional
-	public void ログイン済みの場合は他人の投稿を削除せずに投稿一覧ページにリダイレクトする() throws Exception {
-		mockMvc.perform(post("/posts/1/delete").with(csrf()))
+	public void ログイン済みの場合は他人の投稿を削除せずに投稿一覧画面にリダイレクトする() throws Exception {
+		mockMvc.perform(post(BASE_URL + "/1/delete", 1).with(csrf()))
 				.andExpect(status().is3xxRedirection())
-				.andExpect(redirectedUrl("/posts"));
+				.andExpect(redirectedUrl(BASE_URL.replace("{boardId}", "1")));
 
 		Optional<Post> optionalPost = postService.findPostById(1);
 		assertThat(optionalPost).isPresent();
@@ -187,8 +175,8 @@ public class PostControllerTest {
 
 	@Test
 	@Transactional
-	public void 未ログインの場合は投稿を削除せずにログインページにリダイレクトする() throws Exception {
-		mockMvc.perform(post("/posts/1/delete").with(csrf()))
+	public void 未ログインの場合は投稿を削除せずにログイン画面にリダイレクトする() throws Exception {
+		mockMvc.perform(post(BASE_URL + "/1/delete", 1).with(csrf()))
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("http://localhost/login"));
 

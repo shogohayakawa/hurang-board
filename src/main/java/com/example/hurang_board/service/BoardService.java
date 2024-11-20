@@ -43,6 +43,14 @@ public class BoardService {
 	public Optional<Board> findBoardById(Integer id) {
 		return boardRepository.findById(id);
 	}
+	
+	/**
+	 * 最も直近で作成された掲示板情報を取得
+	 * @return Board 掲示板情報
+	 */
+	public Board findFirstPostByOrderByIdDesc() {
+		return boardRepository.findFirstByOrderByIdDesc();
+	}
 
 	/**
 	 * 掲示板登録

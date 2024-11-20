@@ -154,8 +154,14 @@ public class PostController {
 		}
 
 		Optional<Post> optionalPost = postService.findPostById(postId);
-		Post post = optionalPost.get();
+		User user = userDetailsImpl.getUser();
 
+		if (!optionalPost.get().getUser().equals(user)) {
+			redirectAttributes.addFlashAttribute("errorMessage", "他ユーザが作成した投稿の編集はできません。");
+			return "redirect:/boards/" + boardId + "/posts";
+		}
+
+		Post post = optionalPost.get();
 		model.addAttribute("boardId", boardId);
 		model.addAttribute("postId", postId);
 		model.addAttribute("postEditForm", new PostEditForm(post.getContent()));

@@ -15,4 +15,10 @@ public interface BoardRepository extends JpaRepository<Board, Integer> {
 	 * @return List<Board> 掲示板情報リスト
 	 */
 	public List<Board> findAllByOrderByCreatedAtDesc();
+
+	/**
+	 * 最も直近で作成された掲示板情報を取得
+	 * @return Board 掲示板情報
+	 */
+	public Board findFirstByOrderByIdDesc();
 }
